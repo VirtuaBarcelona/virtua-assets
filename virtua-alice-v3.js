@@ -1,4 +1,4 @@
-﻿document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", () => {
 
                 const rootEl = document.getElementById('virtua-alice-root');
 
@@ -44,14 +44,14 @@
                     const p = document.createElement('div');
                     const isGolden = Math.random() > 0.6;
                     p.className = 'alice-petal' + (isGolden ? ' golden' : '');
-                    $d = document.createElement('div'); $d.className='alice-petal-inner'; p.appendChild($d);
+                    let d = document.createElement('div'); d.className='alice-petal-inner'; p.appendChild(d);
                     p.style.left = Math.random() * 100 + 'vw';
                     p.style.animationDuration = (Math.random() * 15 + 12) + 's';
                     p.style.animationDelay = (Math.random() * -25) + 's';
 
                     if (!isGolden) {
                         const rotation = Math.random() * 360;
-                        p.querySelector('.alice-petal-inner').style.transform = "rotate($rotationdeg)";
+                        p.querySelector('.alice-petal-inner').style.transform = "rotate(" + rotation + "deg)";
                     }
 
                     particleContainer.appendChild(p);
@@ -142,7 +142,7 @@
                 gsap.to(floatObjs, { opacity: 0.6, duration: 2, delay: 3, stagger: 0.2, ease: "power2.out" });
                 floatObjs.forEach((obj, i) => {
                     const speed = parseFloat(obj.dataset.speed) || 0.3;
-                    gsap.to(obj, { y: "${-20 - i * 5}px", rotation: 15 - i * 3, duration: 3 + speed * 4, repeat: -1, yoyo: true, ease: "sine.inOut", delay: i * 0.3 });
+                    gsap.to(obj, { y: (-20 - i * 5) + "px", rotation: 15 - i * 3, duration: 3 + speed * 4, repeat: -1, yoyo: true, ease: "sine.inOut", delay: i * 0.3 });
                 });
 
                 document.querySelectorAll('.alice-float-obj').forEach(obj => {
@@ -265,7 +265,7 @@
                 const galleryTrack = gallerySection?.querySelector('.alice-gallery');
                 if (galleryTrack && !isMobile) {
                     const totalScrollWidth = galleryTrack.scrollWidth - window.innerWidth + 200;
-                    gsap.to(galleryTrack, { x: () => -totalScrollWidth, ease: 'none', scrollTrigger: { trigger: gallerySection, start: 'top top', end: () => +=, scrub: 1, pin: true, anticipatePin: 1, invalidateOnRefresh: true } });
+                    gsap.to(galleryTrack, { x: () => -totalScrollWidth, ease: 'none', scrollTrigger: { trigger: gallerySection, start: 'top top', end: () => "+=" + totalScrollWidth, scrub: 1, pin: true, anticipatePin: 1, invalidateOnRefresh: true } });
                 }
 
             });
