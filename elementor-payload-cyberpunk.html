@@ -1,0 +1,472 @@
+href="https://virtuabarcelona.com/escape-vr-cyberpunk/">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Syne:wght@600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/gh/TU-USUARIO/TU-REPO@main/cyberpunk-v1.js" defer></script>
+
+  <style>
+    /* =====================================================================
+       RESET & BASE THEME CYBERPUNK
+       ===================================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cp-bg:         #030508;
+      --cp-neon-green: #00ff9d;
+      --cp-neon-red:   #ff003c;
+      --cp-neon-cyan:  #00f0ff;
+      --vh-font-title: 'Syne', sans-serif;
+      --vh-font-sub:   'Space Grotesk', sans-serif;
+      --cp-font-mono:  'Share Tech Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--cp-bg);
+      color: #fff;
+      font-family: var(--vh-font-sub);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      cursor: none; /* Custom cursor */
+    }
+
+    /* Scanline Overlay Global */
+    body::after {
+      content: ''; position: fixed; inset: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+      background-size: 100% 4px, 3px 100%;
+      pointer-events: none; z-index: 99999;
+      opacity: 0.4;
+    }
+
+    /* CUSTOM CURSOR CROSSHAIR */
+    .cp-cursor {
+      position: fixed; top: 0; left: 0; width: 40px; height: 40px;
+      pointer-events: none; z-index: 99998;
+      transform: translate(-50%, -50%);
+      transition: width 0.3s, height 0.3s;
+    }
+    .cp-cursor::before, .cp-cursor::after { content: ''; position: absolute; background: var(--cp-neon-green); }
+    .cp-cursor::before { top: 50%; left: -10px; right: -10px; height: 1px; transform: translateY(-50%); }
+    .cp-cursor::after { left: 50%; top: -10px; bottom: -10px; width: 1px; transform: translateX(-50%); }
+    .cp-cursor-center {
+      position: absolute; top: 50%; left: 50%; width: 4px; height: 4px;
+      background: #fff; transform: translate(-50%, -50%);
+      box-shadow: 0 0 10px var(--cp-neon-green);
+    }
+    body.hovering .cp-cursor { width: 60px; height: 60px; }
+    body.hovering .cp-cursor::before, body.hovering .cp-cursor::after { background: var(--cp-neon-red); }
+    @media (pointer: coarse) { .cp-cursor { display: none; } body { cursor: auto; } }
+
+    /* =====================================================================
+       1. HERO CYBERPUNK
+       ===================================================================== */
+    .cp-hero {
+      position: relative; height: 100vh; min-height: 700px;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; padding: 0 5%;
+    }
+    .cp-hero-bg {
+      position: absolute; inset: -2%; z-index: 1;
+      filter: saturate(1.2) contrast(1.1) brightness(0.4);
+    }
+    .cp-hero-bg video {
+      width: 100%; height: 100%; object-fit: cover; pointer-events: none;
+    }
+    .cp-hero-grid {
+      position: absolute; bottom: -50px; left: 0; width: 100%; height: 50%;
+      background-image: linear-gradient(transparent 65%, var(--cp-neon-green) 100%), 
+                        linear-gradient(90deg, transparent 48%, rgba(0,255,157,0.2) 50%, transparent 52%);
+      background-size: 100% 40px, 40px 100%;
+      transform: perspective(600px) rotateX(70deg);
+      transform-origin: bottom; opacity: 0.3; z-index: 2;
+      animation: gridMove 20s linear infinite;
+    }
+    @keyframes gridMove { 0% { background-position: 0 0; } 100% { background-position: 0 400px; } }
+
+    .cp-hero-content {
+      position: relative; z-index: 10; text-align: center; max-width: 100%; width: 100%; padding: 0 20px;
+    }
+    .cp-sys-msg {
+      font-family: var(--cp-font-mono); font-size: 14px;
+      color: var(--cp-neon-cyan); letter-spacing: 4px;
+      margin-bottom: 20px; display: block;
+      text-transform: uppercase;
+      text-shadow: 0 0 10px rgba(0,240,255,0.5);
+    }
+    .cp-title-glitch {
+      font-family: var(--vh-font-title); font-size: clamp(40px, 12vw, 120px);
+      font-weight: 800; text-transform: uppercase; line-height: 1;
+      color: #fff; position: relative; display: inline-block;
+      white-space: nowrap;
+    }
+    .cp-title-glitch::before, .cp-title-glitch::after {
+      content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      opacity: 0.8;
+    }
+    .cp-title-glitch::before {
+      color: var(--cp-neon-cyan); z-index: -1; animation: glitch-anim 3s infinite linear alternate-reverse;
+    }
+    .cp-title-glitch::after {
+      color: var(--cp-neon-red); z-index: -2; animation: glitch-anim-2 2.5s infinite linear alternate-reverse;
+    }
+    @keyframes glitch-anim {
+      0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 1px); }
+      20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -1px); }
+      40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 2px); }
+      60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
+      80% { clip-path: inset(10% 0 70% 0); transform: translate(-1px, 1px); }
+      100% { clip-path: inset(30% 0 50% 0); transform: translate(1px, -1px); }
+    }
+    @keyframes glitch-anim-2 {
+      0% { clip-path: inset(10% 0 60% 0); transform: translate(2px, -1px); }
+      20% { clip-path: inset(80% 0 5% 0); transform: translate(-2px, 1px); }
+      40% { clip-path: inset(30% 0 20% 0); transform: translate(2px, -2px); }
+      60% { clip-path: inset(70% 0 10% 0); transform: translate(-2px, 2px); }
+      80% { clip-path: inset(5% 0 80% 0); transform: translate(1px, -1px); }
+      100% { clip-path: inset(50% 0 30% 0); transform: translate(-1px, 1px); }
+    }
+
+    .cp-hero-btns {
+      margin-top: 50px; display: flex; gap: 20px; justify-content: center;
+    }
+    .cp-btn {
+      position: relative; padding: 18px 40px; background: transparent;
+      border: 1px solid var(--cp-neon-green); color: var(--cp-neon-green);
+      font-family: var(--cp-font-mono); font-size: 16px; letter-spacing: 3px;
+      text-transform: uppercase; text-decoration: none; font-weight: bold;
+      overflow: hidden; transition: all 0.3s;
+      display: inline-block; cursor: pointer;
+    }
+    .cp-btn::before {
+      content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+      background: var(--cp-neon-green); transition: left 0.3s; z-index: -1;
+    }
+    .cp-btn:hover { color: #000; box-shadow: 0 0 20px rgba(0,255,157,0.5); }
+    .cp-btn:hover::before { left: 0; }
+
+    /* =====================================================================
+       2. TERMINAL (SINOPSIS) & HUD FICHA TÉCNICA
+       ===================================================================== */
+    .cp-briefing-section {
+      padding: 100px 5%; background: var(--cp-bg); position: relative; z-index: 20;
+    }
+    .cp-briefing-grid {
+      max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr 400px; gap: 60px;
+    }
+    @media (max-width: 1024px) { .cp-briefing-grid { grid-template-columns: 1fr; } }
+
+    /* Terminal Window */
+    .cp-terminal {
+      background: rgba(10,15,20,0.9); border: 1px solid rgba(0,255,157,0.3);
+      border-radius: 4px; padding: 30px; position: relative;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,255,157,0.05);
+    }
+    .cp-terminal-header {
+      display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,255,157,0.2);
+      padding-bottom: 15px; margin-bottom: 25px;
+    }
+    .cp-terminal-title {
+      font-family: var(--cp-font-mono); color: var(--cp-neon-green); font-size: 14px; letter-spacing: 2px;
+    }
+    .cp-terminal-status { color: var(--cp-neon-red); font-family: var(--cp-font-mono); font-size: 12px; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    
+    .cp-terminal-body p {
+      font-family: var(--cp-font-mono); font-size: clamp(14px, 2vw, 16px); color: #ccc; line-height: 1.8; margin-bottom: 20px;
+    }
+    .cp-terminal-body p span.highlight { color: var(--cp-neon-cyan); }
+
+    /* HUD Ficha Técnica */
+    .cp-hud {
+      display: flex; flex-direction: column; gap: 20px;
+    }
+    .cp-hud-item {
+      background: rgba(255,255,255,0.02); border-left: 3px solid var(--cp-neon-cyan);
+      padding: 20px; position: relative; overflow: hidden;
+    }
+    .cp-hud-item::after {
+      content: ''; position: absolute; top: 0; right: 0; width: 30px; height: 30px;
+      background: linear-gradient(135deg, transparent 50%, rgba(0,240,255,0.1) 50%);
+    }
+    .cp-hud-label {
+      font-family: var(--vh-font-sub); font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 2px;
+    }
+    .cp-hud-value {
+      font-family: var(--vh-font-title); font-size: 32px; font-weight: 800; color: #fff; margin-top: 5px;
+    }
+    .cp-hud-diff { display: flex; gap: 4px; margin-top: 10px; }
+    .cp-hud-seg { height: 8px; flex: 1; background: rgba(255,255,255,0.1); transform: skewX(-20deg); }
+    .cp-hud-seg.active { background: var(--cp-neon-red); box-shadow: 0 0 10px var(--cp-neon-red); }
+
+    /* =====================================================================
+       3. TRÁILER (YOUTUBE)
+       ===================================================================== */
+    .cp-video-section {
+      padding: 80px 5%; background: var(--cp-bg); position: relative;
+      border-top: 1px dashed rgba(0,255,157,0.3);
+      border-bottom: 1px dashed rgba(0,255,157,0.3);
+    }
+    .cp-video-container {
+      max-width: 1100px; margin: 0 auto; position: relative;
+      aspect-ratio: 16/9;
+      border: 2px solid var(--cp-neon-cyan);
+      box-shadow: 0 0 30px rgba(0,240,255,0.2), inset 0 0 20px rgba(0,240,255,0.1);
+      padding: 10px; background: rgba(0,0,0,0.5);
+    }
+    .cp-video-container::before {
+      content: 'DATALINK_ESTABLISHED'; position: absolute; top: -12px; left: 20px;
+      background: var(--cp-bg); color: var(--cp-neon-cyan); font-family: var(--cp-font-mono);
+      font-size: 12px; padding: 0 10px;
+    }
+    .cp-video-container iframe {
+      width: 100%; height: 100%; border: none; filter: contrast(1.1);
+    }
+
+    /* =====================================================================
+       4. GALERÍA "ARCHIVOS INTERCEPTADOS"
+       ===================================================================== */
+    .cp-gallery-section { padding: 80px 5%; background: #010203; }
+    .cp-section-header { text-align: center; margin-bottom: 60px; }
+    .cp-section-title {
+      font-family: var(--vh-font-title); font-size: clamp(30px, 5vw, 40px); font-weight: 800; text-transform: uppercase; color: #fff;
+    }
+    .cp-section-subtitle {
+      font-family: var(--cp-font-mono); color: var(--cp-neon-cyan); font-size: 14px; letter-spacing: 3px;
+    }
+
+    .cp-gallery-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; max-width: 1400px; margin: 0 auto;
+    }
+    @media (max-width: 768px) { .cp-gallery-grid { grid-template-columns: 1fr; } }
+    
+    .cp-gallery-item {
+      position: relative; aspect-ratio: 16/9; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .cp-gallery-item img {
+      width: 100%; height: 100%; object-fit: cover; filter: grayscale(80%) contrast(1.2); transition: all 0.5s;
+    }
+    .cp-gallery-item:hover img { filter: grayscale(0%) contrast(1.1); transform: scale(1.05); }
+    
+    .matrix-canvas {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;
+      transition: opacity 0.5s ease, transform 0.5s ease; pointer-events: none;
+    }
+    .cp-gallery-item:hover .matrix-canvas {
+      opacity: 0; transform: scale(1.1);
+    }
+
+    .cp-gallery-overlay {
+      position: absolute; inset: 0; background: rgba(0,255,157,0.2); mix-blend-mode: overlay;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    }
+    .cp-gallery-item:hover .cp-gallery-overlay { opacity: 1; }
+    .cp-gallery-label {
+      position: absolute; bottom: 20px; left: 20px; background: #000; color: var(--cp-neon-green);
+      font-family: var(--cp-font-mono); padding: 5px 10px; font-size: 12px; border-left: 2px solid var(--cp-neon-green);
+    }
+
+    /* =====================================================================
+       4. CALL TO ACTION
+       ===================================================================== */
+    .cp-cta-section {
+      padding: 120px 5%; text-align: center; position: relative; background: #050010;
+      border-top: 1px dashed rgba(255,0,60,0.3);
+    }
+    .cp-cta-title {
+      font-family: var(--vh-font-title); font-size: clamp(36px, 8vw, 80px); font-weight: 800; text-transform: uppercase; line-height: 1; margin-bottom: 40px;
+    }
+    .cp-btn-large {
+      display: inline-block; padding: 25px 60px; background: var(--cp-neon-red); color: #fff;
+      font-family: var(--vh-font-title); font-size: 20px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 2px; text-decoration: none; border-radius: 4px;
+      box-shadow: 0 10px 30px rgba(255,0,60,0.4); transition: transform 0.3s, box-shadow 0.3s, background 0.3s;
+      position: relative; overflow: hidden; cursor: pointer; border: none;
+    }
+    .cp-btn-large:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(255,0,60,0.6); }
+    .hack-progress {
+      position: absolute; top: 0; left: 0; height: 100%; width: 0%;
+      background: var(--cp-neon-green); z-index: 1; transition: width 0.1s linear;
+    }
+    .hack-text { position: relative; z-index: 2; pointer-events: none; }
+
+    /* SYSTEM GLITCH ANIMATION */
+    body.system-glitch {
+      animation: sysGlitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+    }
+    body.system-glitch main { filter: hue-rotate(90deg) contrast(150%); }
+    @keyframes sysGlitch {
+      0% { transform: translate(0) skew(0deg); }
+      20% { transform: translate(-10px, 5px) skew(-10deg); }
+      40% { transform: translate(10px, -5px) skew(10deg); }
+      60% { transform: translate(-5px, 10px) skew(-5deg); }
+      80% { transform: translate(5px, -10px) skew(5deg); }
+      100% { transform: translate(0) skew(0deg); }
+    }
+    
+    /* BACKGROUND PARTICLES */
+    #bg-canvas {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      pointer-events: none; z-index: 0; opacity: 0.5; mix-blend-mode: screen;
+    }
+
+    /* STICKY BOOKING BUTTON */
+    .cp-sticky-btn {
+      position: fixed; bottom: 30px; right: 30px; z-index: 9990;
+      background: var(--cp-neon-green); color: #000;
+      font-family: var(--cp-font-mono); font-size: 16px; font-weight: bold;
+      padding: 15px 30px; text-decoration: none; border-radius: 4px;
+      box-shadow: 0 0 20px rgba(0,255,157,0.4); border: 2px solid #fff;
+      transform: translateY(150px); opacity: 0; transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      cursor: none; /* Inherit custom cursor if not on mobile */
+    }
+    .cp-sticky-btn.is-visible { transform: translateY(0); opacity: 1; }
+    .cp-sticky-btn:hover { background: #fff; box-shadow: 0 0 30px rgba(0,255,157,0.8); }
+    @media (max-width: 768px) {
+      .cp-sticky-btn {
+        bottom: 0; right: 0; width: 100%; text-align: center; border-radius: 0;
+        padding: 20px; font-size: 18px; border: none; border-top: 2px solid #fff;
+        transform: translateY(100%);
+      }
+    }
+
+  </style>
+
+<!-- Background Interactive Particles -->
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- Custom Cursor -->
+  <div class="cp-cursor"><div class="cp-cursor-center"></div></div>
+
+  <main>
+    <!-- 1. HERO -->
+    <section class="cp-hero">
+      <div class="cp-hero-bg">
+        <video autoplay loop muted playsinline>
+          <source src="https://virtuabarcelona.com/wp-content/uploads/2026/04/Hero-Cyberpunk-Horizontal.mp4" media="(min-width: 768px)">
+          <source src="https://virtuabarcelona.com/wp-content/uploads/2026/04/Hero-Cyberpunk-Vertical.mp4" media="(max-width: 767px)">
+        </video>
+      </div>
+      <div class="cp-hero-grid"></div>
+      <div class="cp-hero-content">
+        <span class="cp-sys-msg">SYS_ACCESS_GRANTED // PROTOCOL_77</span>
+        <h1 class="cp-title-glitch" data-text="CYBERPUNK">CYBERPUNK</h1>
+        <div class="cp-hero-btns">
+          <a href="#briefing" class="cp-btn interaction-zone">Decodificar Misión</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. SINOPSIS Y HUD -->
+    <section class="cp-briefing-section" id="briefing">
+      <div class="cp-briefing-grid">
+        
+        <!-- Terminal de texto -->
+        <div class="cp-terminal">
+          <div class="cp-terminal-header">
+            <span class="cp-terminal-title">C:\CORP_ARCHIVE\MISSION_BRIEF.EXE</span>
+            <span class="cp-terminal-status">REC//</span>
+          </div>
+          <div class="cp-terminal-body">
+            <p>Principios del siglo XXII. La sociedad ha caído durante el rápido progreso tecnológico. La gente está haciendo muchísimos cambios en su cuerpo.</p>
+            <p>Las grandes empresas están enfrentadas entre ellas por los <span class="highlight">datos</span>, que se han convertido en el producto de mayor valor del mercado.</p>
+            <p>Tu grupo, formado por <span class="highlight">androides con habilidades especiales</span>, ha decidido robar unos excepcionales datos de los archivos de una influyente empresa.</p>
+            <p>Tras haberos infiltrado en el complejo y haber pasado desapercibidos, tenéis que llegar a los archivos y descargar la memoria. Pero no va a ser un camino de rosas…</p>
+          </div>
+        </div>
+
+        <!-- Ficha HUD -->
+        <div class="cp-hud">
+          <div class="cp-hud-item">
+            <span class="cp-hud-label">Sincronización</span>
+            <div class="cp-hud-value">60 MIN</div>
+          </div>
+          <div class="cp-hud-item">
+            <span class="cp-hud-label">Androides Requeridos</span>
+            <div class="cp-hud-value">2 - 4</div>
+          </div>
+          <div class="cp-hud-item">
+            <span class="cp-hud-label">Edad Mínima</span>
+            <div class="cp-hud-value">+10 AÑOS</div>
+          </div>
+          <div class="cp-hud-item">
+            <span class="cp-hud-label">Nivel de Seguridad</span>
+            <div class="cp-hud-value">8 / 10</div>
+            <div class="cp-hud-diff">
+              <div class="cp-hud-seg active"></div><div class="cp-hud-seg active"></div>
+              <div class="cp-hud-seg active"></div><div class="cp-hud-seg active"></div>
+              <div class="cp-hud-seg active"></div><div class="cp-hud-seg active"></div>
+              <div class="cp-hud-seg active"></div><div class="cp-hud-seg active"></div>
+              <div class="cp-hud-seg"></div><div class="cp-hud-seg"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 3. TRÁILER YOUTUBE -->
+    <section class="cp-video-section interaction-zone">
+      <div class="cp-section-header">
+        <span class="cp-section-subtitle">>> FEED DE VÍDEO</span>
+        <h2 class="cp-section-title">Transmisión Entrante</h2>
+      </div>
+      <div class="cp-video-container">
+        <!-- Reemplazar el src con el vídeo real de Cyberpunk VR -->
+        <iframe src="https://www.youtube-nocookie.com/embed/03nVD1Zye18?controls=0&autoplay=1&mute=1&loop=1&playlist=03nVD1Zye18&rel=0&modestbranding=1" title="Cyberpunk VR Trailer" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </section>
+
+    <!-- 4. GALERÍA -->
+    <section class="cp-gallery-section interaction-zone">
+      <div class="cp-section-header">
+        <span class="cp-section-subtitle">>> ARCHIVOS INTERCEPTADOS</span>
+        <h2 class="cp-section-title">Evidencia Visual</h2>
+      </div>
+      <div class="cp-gallery-grid">
+        <div class="cp-gallery-item">
+          <canvas class="matrix-canvas"></canvas>
+          <img src="https://virtuabarcelona.com/wp-content/uploads/2026/04/Cyberpunk_Horizontal_Galeria_1.webp" alt="Cyberpunk VR Callejón">
+          <div class="cp-gallery-overlay"></div>
+          <span class="cp-gallery-label">LOC_01: ENTRANCE</span>
+        </div>
+        <div class="cp-gallery-item">
+          <canvas class="matrix-canvas"></canvas>
+          <img src="https://virtuabarcelona.com/wp-content/uploads/2026/04/Cyberpunk_Horizontal_Galeria_2.webp" alt="Cyberpunk VR Servidores">
+          <div class="cp-gallery-overlay"></div>
+          <span class="cp-gallery-label">LOC_02: SERVERS</span>
+        </div>
+        <div class="cp-gallery-item">
+          <canvas class="matrix-canvas"></canvas>
+          <img src="https://virtuabarcelona.com/wp-content/uploads/2026/04/Cyberpunk_Horizontal_Galeria_3.webp" alt="Cyberpunk VR Jugadores">
+          <div class="cp-gallery-overlay"></div>
+          <span class="cp-gallery-label">LOC_03: LAB</span>
+        </div>
+        <div class="cp-gallery-item">
+          <canvas class="matrix-canvas"></canvas>
+          <img src="https://virtuabarcelona.com/wp-content/uploads/2026/04/Cyberpunk_Horizontal_Galeria_4.webp" alt="Cyberpunk VR Puzzle">
+          <div class="cp-gallery-overlay"></div>
+          <span class="cp-gallery-label">LOC_04: ESCAPE_ROUTE</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. CTA FINAL -->
+    <section class="cp-cta-section interaction-zone">
+      <h2 class="cp-cta-title">¿Estáis preparados<br>para el 2077?</h2>
+      <button class="cp-btn-large" id="hack-btn" data-url="https://virtuabarcelona.com/reservas_virtua/">
+        <div class="hack-progress"></div>
+        <span class="hack-text">HACKEAR SISTEMA (RESERVAR)</span>
+      </button>
+    </section>
+
+    <!-- 6. STICKY BUTTON -->
+    <a href="https://virtuabarcelona.com/reservas_virtua/" class="cp-sticky-btn interaction-zone" id="sticky-book-btn">RESERVAR AHORA</a>
+
+  </main>
