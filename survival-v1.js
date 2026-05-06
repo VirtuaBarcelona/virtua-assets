@@ -3,7 +3,7 @@
  * Versión 1.0
  */
 
-document.addEventListener("DOMContentLoaded", () => {
+const initSurvival = () => {
     
     // 1. REGISTRO DE PLUGINS GSAP Y SOLUCIÓN LENIS/ELEMENTOR
     gsap.registerPlugin(ScrollTrigger);
@@ -188,4 +188,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Notas de Responsividad: El listener de "resize" deberá recalcular posiciones
     // si el viewport cambia drásticamente, pero el uso de vw/vh ayuda a mitigarlo.
-});
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener("DOMContentLoaded", initSurvival);
+} else {
+    initSurvival();
+}
