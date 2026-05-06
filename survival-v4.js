@@ -104,6 +104,7 @@ const initSurvival = () => {
     const tlMaster = gsap.timeline({
         scrollTrigger: {
             trigger: triggerSection,
+            pin: ".sticky-content",
             start: "top top",
             end: "bottom bottom",
             scrub: 1 // Suavizado del scroll
