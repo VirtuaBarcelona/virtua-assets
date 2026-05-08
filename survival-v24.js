@@ -1,5 +1,5 @@
 // ======================================================================
-// SURVIVAL — LÓGICA GSAP & INTERACTIVIDAD v19.0 (MOBILE SCROLL FIXES)
+// SURVIVAL — LÓGICA GSAP & INTERACTIVIDAD v20.0 (GHOST TOUCH FIX)
 // ======================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
     gsap.set("#srv-radio", { opacity: 0, scale: 0.8 });
     gsap.set("#srv-radio-text", { text: "" });
     gsap.set("#srv-crt-glow", { opacity: 0 });
-    gsap.set("#srv-torch", { opacity: 0, y: 150 });
+    gsap.set("#srv-torch", { opacity: 0, y: 150, pointerEvents: "none" });
     gsap.set("#srv-torch-glow", { opacity: 0 });
     gsap.set("#srv-helicopter", { opacity: 0, x: -300, y: 50, scale: 0.1 });
     gsap.set("#srv-blackout", { opacity: 0 });
@@ -38,6 +38,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const musicTarde = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/AUDIO-BGM-TARDE.MP3'], loop: true, volume: 0 });
     const musicNoche = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/AUDIO-BGM-NOCHE.MP3'], loop: true, volume: 0 });
     const musicInstrumental = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/AUDIO-INSTRUMENTAL.mp3'], loop: true, volume: 0 });
+
+    // Mutear audio cuando el móvil se bloquea o se cambia de pestaña
+    document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+            Howler.mute(true);
+        } else {
+            Howler.mute(false);
+        }
+    });
 
     let playedThud = false;
     let playedLeaves = false;
@@ -134,7 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tl.to("#srv-radio-text", { text: "", duration: 0.1 }); // Borrar
     
     tl.to("#srv-radio-text", {
-        text: "> ESCAPE ROOM DATA:<br>> DIFICULTAD: 5/10<br>> JUGADORES: 2-6<br>> TIEMPO: 60 MIN<br>> EDAD: +10<br>> TAGS: SUPERVIVENCIA, FAMILIAR, INVESTIGACIÓN",
+        text: "> DATA:<br>> DIFICULTAD: 5/10 | JUGADORES: 2-6<br>> TIEMPO: 60 MIN | EDAD: +10<br>> TAGS: SUPERVIVENCIA, INVESTIGACIÓN",
         duration: 3,
         ease: "none",
         onComplete: () => { audioStatic.fade(0.3, 0, 1000); },
@@ -156,8 +165,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const pols = ["#pol-1", "#pol-2", "#pol-3", "#pol-4", "#pol-5", "#pol-6"];
     const rotFinal = [-12, 8, -6, 14, -8, 10];
     const isMobile = window.innerWidth <= 768;
-    const xPos = isMobile ? [-80, 80, -40, 40, -90, 90] : [-200, 200, -120, 120, -220, 220];
-    const yPos = isMobile ? [-150, -180, -20, 40, 100, 130] : [-80, -120, 40, 80, -20, 150];
+    // Reduce spread on mobile to prevent lateral overflow
+    const xPos = isMobile ? [-40, 50, -20, 30, -50, 40] : [-200, 200, -120, 120, -220, 220];
+    const yPos = isMobile ? [-120, -150, -30, 30, 90, 120] : [-80, -120, 40, 80, -20, 150];
 
     pols.forEach((pol) => {
         tl.to(pol, {
@@ -183,10 +193,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- FASE 4: CLÍMAX (Antorcha) ---
     tl.to("#srv-torch", { 
         opacity: 1, y: 0, duration: 2, ease: "back.out(1.2)",
+        onComplete: () => gsap.set("#srv-torch", { pointerEvents: "auto" }),
         onReverseComplete: () => {
             // Reset en caso de scroll back
             isTorchLit = false;
             document.getElementById("srv-torch").classList.remove("is-lit");
+            gsap.set("#srv-torch", { pointerEvents: "none" });
             gsap.to("#srv-torch-glow", { opacity: 0, duration: 0.3 });
             gsap.to("#srv-final-ui", { opacity: 0, duration: 0.5 });
             gsap.to("#srv-blackout", { opacity: 0, duration: 0.5 });
@@ -203,49 +215,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ── 4. HOVER, FLIP Y DRAGGABLE ───────────────────────────────────────────
 
-    pols.forEach((polSelector) => {
+    pols.forEach((polSelector, idx) => {
         const el = document.querySelector(polSelector);
         if(!el) return;
-        
-        // Touch support base
-        el.addEventListener('touchstart', (e) => {
-            // Unflip and scale down others
-            pols.forEach(p => { 
-                const pe = document.querySelector(p);
-                if (pe && pe !== el) {
-                    pe.classList.remove('is-flipped');
-                    gsap.to(pe, { scale: 0.75, zIndex: 25, duration: 0.3 });
-                }
-            });
-        }, { passive: true });
 
         // Click / Flip interaction
         el.addEventListener('click', (e) => {
             if (navigator.vibrate) navigator.vibrate(50);
-            // Toggle flip on the clicked polaroid
-            el.classList.toggle('is-flipped');
             
-            // Unflip all others
-            pols.forEach(p => { 
+            const wasFlipped = el.classList.contains('is-flipped');
+            
+            // Toggle state
+            if (wasFlipped) {
+                el.classList.remove('is-flipped');
+                el.classList.remove('is-active'); // Removes unblur
+            } else {
+                el.classList.add('is-flipped');
+                el.classList.add('is-active'); // Triggers unblur
+            }
+            
+            // Unflip all others and return them to scatter pos, ONLY if they are flipped
+            pols.forEach((p, otherIdx) => { 
                 const pe = document.querySelector(p);
-                if (pe && pe !== el) {
+                if (pe && pe !== el && pe.classList.contains('is-flipped')) {
                     pe.classList.remove('is-flipped');
-                    gsap.to(pe, { scale: 0.75, zIndex: 25, duration: 0.3 });
+                    pe.classList.remove('is-active');
+                    gsap.to(pe, { x: xPos[otherIdx], y: yPos[otherIdx], rotation: rotFinal[otherIdx], scale: 0.75, zIndex: 25, duration: 0.4 });
                 }
             });
 
-            // Adjust scale based on flip state
-            if(el.classList.contains('is-flipped')) {
-                gsap.to(el, { scale: 1.4, zIndex: 35, duration: 0.3, ease: "back.out(1.5)" });
-            } else {
-                gsap.to(el, { scale: 1.1, zIndex: 30, duration: 0.3 });
+            // Adjust the clicked one
+            const scaleFlip = window.innerWidth <= 768 ? 0.95 : 1.4; // Slightly smaller on mobile to ensure it fits
+            if(!wasFlipped) { // if it just got flipped
+                gsap.to(el, { x: 0, y: 0, rotation: 0, scale: scaleFlip, zIndex: 40, duration: 0.5, ease: "back.out(1.2)" });
+            } else { // if it got unflipped
+                gsap.to(el, { x: xPos[idx], y: yPos[idx], rotation: rotFinal[idx], scale: 1.05, zIndex: 30, duration: 0.4 });
             }
         });
 
         // Hover (Mouse)
         el.addEventListener('mouseenter', () => {
             if(!el.classList.contains('is-flipped')) {
-                gsap.to(el, { scale: 1.1, zIndex: 30, duration: 0.3 });
+                gsap.to(el, { scale: 0.85, zIndex: 30, duration: 0.3 });
             }
         });
         el.addEventListener('mouseleave', () => {
@@ -258,11 +269,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // Close flipped polaroids when clicking/touching outside
     const closeAllPolaroids = (e) => {
         if (!e.target.closest('.srv-polaroid')) {
-            pols.forEach(p => {
+            pols.forEach((p, idx) => {
                 const pe = document.querySelector(p);
-                if(pe) {
+                if(pe && pe.classList.contains('is-flipped')) {
                     pe.classList.remove('is-flipped');
-                    gsap.to(pe, { scale: 0.75, zIndex: 25, duration: 0.3 });
+                    pe.classList.remove('is-active');
+                    gsap.to(pe, { x: xPos[idx], y: yPos[idx], rotation: rotFinal[idx], scale: 0.75, zIndex: 25, duration: 0.4 });
                 }
             });
         }
@@ -274,6 +286,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const igniteTorch = () => {
         if (isTorchLit) return;
+        // Verify opacity to prevent early accidental triggers
+        if (gsap.getProperty("#srv-torch", "opacity") < 0.9) return; 
         isTorchLit = true;
         document.getElementById("srv-torch").classList.add("is-lit");
         gsap.to("#srv-torch-glow", { opacity: 1, duration: 0.3 });
@@ -314,7 +328,11 @@ document.addEventListener("DOMContentLoaded", () => {
         finalTl.to("#srv-heli-shout", { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.5)" }, "-=4");
         finalTl.to("#srv-heli-shout", { opacity: 0, scale: 0.9, duration: 0.5 }, "-=2.5");
 
-        finalTl.to("#srv-blackout", { opacity: 1, duration: 2 }, "-=2");
+        // Fade out torch exactly when helicopter arrives
+        finalTl.to("#srv-torch", { opacity: 0, scale: 0.8, duration: 1, pointerEvents: "none" }, "-=1");
+        finalTl.to("#srv-torch-glow", { opacity: 0, duration: 1 }, "<");
+
+        finalTl.to("#srv-blackout", { opacity: 1, duration: 2 }, "-=1");
         
         finalTl.to("#srv-final-ui", { opacity: 1, duration: 0.1 });
         finalTl.to("#srv-final-title", { opacity: 1, scale: 1, duration: 2, ease: "power2.out" });
