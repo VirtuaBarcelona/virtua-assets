@@ -101,44 +101,44 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 const progress = self.progress;
 
-                // Zona 1: Scroll 0% - 25% (fade out 15%-30%)
-                if (progress <= 0.15) {
+                // Zona 1: Día (0.00 - 0.50)
+                if (progress <= 0.41) {
                     musicDia.volume(1 * volMod);
-                } else if (progress > 0.15 && progress <= 0.30) {
-                    musicDia.volume((1 - (progress - 0.15) / 0.15) * volMod);
+                } else if (progress > 0.41 && progress <= 0.50) {
+                    musicDia.volume((1 - (progress - 0.41) / 0.09) * volMod);
                 } else {
                     musicDia.volume(0);
                 }
 
-                // Zona 2: Scroll 25% - 55% (fade in 15-35%, max 35-50%, fade out 50-65%)
-                if (progress < 0.15) {
+                // Zona 2: Tarde (0.41 - 0.79)
+                if (progress < 0.41) {
                     musicTarde.volume(0);
-                } else if (progress >= 0.15 && progress < 0.35) {
-                    musicTarde.volume(((progress - 0.15) / 0.20) * volMod);
-                } else if (progress >= 0.35 && progress <= 0.50) {
+                } else if (progress >= 0.41 && progress < 0.50) {
+                    musicTarde.volume(((progress - 0.41) / 0.09) * volMod);
+                } else if (progress >= 0.50 && progress <= 0.70) {
                     musicTarde.volume(1 * volMod);
-                } else if (progress > 0.50 && progress <= 0.65) {
-                    musicTarde.volume((1 - (progress - 0.50) / 0.15) * volMod);
+                } else if (progress > 0.70 && progress <= 0.79) {
+                    musicTarde.volume((1 - (progress - 0.70) / 0.09) * volMod);
                 } else {
                     musicTarde.volume(0);
                 }
 
-                // Zona 3: Scroll 55% - 85% (fade in 45-70%, max 70-85%)
-                if (progress < 0.45) {
+                // Zona 3: Noche (0.70 - 1.00) -> SE MANTIENE EL AMBIENTE para inmersión
+                if (progress < 0.70) {
                     musicNoche.volume(0);
-                } else if (progress >= 0.45 && progress < 0.70) {
-                    musicNoche.volume(((progress - 0.45) / 0.25) * volMod);
-                } else if (progress >= 0.70 && progress <= 0.85) {
-                    musicNoche.volume(1 * volMod);
+                } else if (progress >= 0.70 && progress < 0.79) {
+                    musicNoche.volume(((progress - 0.70) / 0.09) * volMod);
                 } else {
-                    musicNoche.volume(0);
+                    musicNoche.volume(1 * volMod);
                 }
 
-                // Zona 4: Scroll 85% - 100% (enters abruptly at 85%)
-                if (progress > 0.85) {
-                    musicInstrumental.volume(1 * volMod);
-                } else {
+                // Zona 4: Instrumental (Clímax, 0.85 - 1.00)
+                if (progress < 0.85) {
                     musicInstrumental.volume(0);
+                } else if (progress >= 0.85 && progress < 0.95) {
+                    musicInstrumental.volume(((progress - 0.85) / 0.10) * volMod);
+                } else {
+                    musicInstrumental.volume(1 * volMod);
                 }
             }
         }
