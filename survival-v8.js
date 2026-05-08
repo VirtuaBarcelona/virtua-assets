@@ -99,15 +99,8 @@ document.addEventListener("DOMContentLoaded", () => {
     tl.to(musicDia, { volume: 0, duration: 4 }, "tarde-start");
     tl.to(musicTarde, { volume: 0.4, duration: 4 }, "tarde-start");
     
-    tl.to({}, { duration: 4 }); // Pausa antes de que caiga la noche
-    
-    tl.addLabel("noche-start");
-    tl.to("#srv-bg-noche", { opacity: 1, duration: 4 }, "noche-start");
-    tl.to(musicTarde, { volume: 0, duration: 4 }, "noche-start");
-    tl.to(musicNoche, { volume: 0.4, duration: 4 }, "noche-start");
-
-    tl.to("#srv-radio", { opacity: 1, scale: 1, duration: 2, ease: "back.out(1.2)" });
-    tl.to("#srv-crt-glow", { opacity: 1, duration: 1 }, "-=1");
+    tl.to("#srv-radio", { opacity: 1, scale: 1, duration: 2, ease: "back.out(1.2)" }, "tarde-start+=1");
+    tl.to("#srv-crt-glow", { opacity: 1, duration: 1 }, "tarde-start+=2");
 
     tl.to("#srv-radio-text", {
         text: "> Transmisión interceptada...<br>> ¿Hay alguien ahí?<br>> Necesitamos extracción.<br>> Coordenadas: 41°23'N 2°10'E<br>> ...<br>> [ESTÁTICA]",
@@ -133,6 +126,11 @@ document.addEventListener("DOMContentLoaded", () => {
     tl.to("#srv-crt-glow", { opacity: 0, duration: 1 }, "<");
 
     // --- FASE 3: POLAROIDS ---
+    tl.addLabel("noche-start");
+    tl.to("#srv-bg-noche", { opacity: 1, duration: 4 }, "noche-start");
+    tl.to(musicTarde, { volume: 0, duration: 4 }, "noche-start");
+    tl.to(musicNoche, { volume: 0.4, duration: 4 }, "noche-start");
+
     const pols = ["#pol-1", "#pol-2", "#pol-3", "#pol-4", "#pol-5", "#pol-6"];
     const rotFinal = [-12, 8, -6, 14, -8, 10];
     const xPos = [-200, 200, -120, 120, -220, 220];
@@ -143,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
             opacity: 1, y: 0, scale: 0.9,
             rotation: (Math.random() - 0.5) * 30,
             duration: 0.8, ease: "back.out(1.5)"
-        }, "-=0.6");
+        }, "noche-start+=1");
     });
 
     tl.to({}, { duration: 1 });
@@ -187,23 +185,19 @@ document.addEventListener("DOMContentLoaded", () => {
         el.addEventListener('touchstart', (e) => {
             pols.forEach(p => { 
                 const pe = document.querySelector(p);
-                if (pe) {
-                    pe.style.zIndex = "25";
-                    if (pe.style.transform) pe.style.transform = pe.style.transform.replace(/scale\([0-9.]+\)/, 'scale(0.75)');
+                if (pe && pe !== el) {
+                    gsap.to(pe, { scale: 0.75, zIndex: 25, duration: 0.3 });
                 }
             });
-            el.style.zIndex = "30";
-            if (el.style.transform) el.style.transform = el.style.transform.replace(/scale\([0-9.]+\)/, 'scale(1.1)');
+            gsap.to(el, { scale: 1.1, zIndex: 30, duration: 0.3 });
         }, { passive: true });
 
         // Hover (Mouse)
         el.addEventListener('mouseenter', () => {
-            el.style.zIndex = "30";
-            if (el.style.transform) el.style.transform = el.style.transform.replace(/scale\([0-9.]+\)/, 'scale(1.1)');
+            gsap.to(el, { scale: 1.1, zIndex: 30, duration: 0.3 });
         });
         el.addEventListener('mouseleave', () => {
-            el.style.zIndex = "25";
-            if (el.style.transform) el.style.transform = el.style.transform.replace(/scale\([0-9.]+\)/, 'scale(0.75)');
+            gsap.to(el, { scale: 0.75, zIndex: 25, duration: 0.3 });
         });
     });
 
