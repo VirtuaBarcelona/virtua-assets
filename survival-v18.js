@@ -1,5 +1,5 @@
 // ======================================================================
-// SURVIVAL — LÓGICA GSAP & INTERACTIVIDAD v17.0 (MOBILE UX & DESIGN SPELLS)
+// SURVIVAL — LÓGICA GSAP & INTERACTIVIDAD v18.0 (MOBILE UX & DESIGN SPELLS)
 // ======================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
