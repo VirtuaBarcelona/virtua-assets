@@ -6,9 +6,19 @@ document.addEventListener("DOMContentLoaded", () => {
     // Registrar Plugins GSAP
     gsap.registerPlugin(ScrollTrigger, TextPlugin, Draggable);
     
-    // Optimizaciones Mobile UX (Evitar saltos con barra de navegación)
     ScrollTrigger.config({ ignoreMobileResize: true });
     ScrollTrigger.normalizeScroll(true);
+
+    // ESTANDAR_MOBILE: Recálculo Dinámico para GSAP ScrollTrigger
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => ScrollTrigger.refresh(true), 250);
+    });
+    window.addEventListener('load', () => setTimeout(() => ScrollTrigger.refresh(true), 500));
+
+    const isMobile = window.innerWidth <= 768;
+    const volMod = isMobile ? 0.7 : 1.0;
 
     // ── 1. ESTADOS INICIALES ─────────────────────────────────────────────
     gsap.set(".srv-polaroid", { opacity: 0, y: -100, xPercent: -50, yPercent: -50, scale: 0.5, rotation: 0 });
@@ -25,19 +35,23 @@ document.addEventListener("DOMContentLoaded", () => {
     gsap.set("#srv-heli-shout", { opacity: 0, scale: 0.8 });
 
     // ── 2. GESTIÓN DE AUDIO (Howler.js) ──────────────────────────────────
-    const audioThud = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/sfx_thud.mp3'], volume: 0.8 });
-    const audioHeroDrop = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/SFX-HERO-DROP.MP3'], volume: 1.0 });
-    const audioLeaves = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/SFX-SCROLL-HOJAS.MP3'], volume: 0.6 });
-    const audioStatic = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/sfx_static.mp3'], loop: true, volume: 0.3 });
-    const audioIgnite = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/SFX-ANTORCHA-ENCENDIDO.mp3'], volume: 1.0 });
-    const audioHeliApproach = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/SFX-HELICOPTERO-APPROACH.MP3'], volume: 1.0 });
+    const audioThud = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/sfx_thud.mp3'], volume: 0.8 * volMod });
+    const audioHeroDrop = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/SFX-HERO-DROP.MP3'], volume: 1.0 * volMod });
+    const audioLeaves = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/SFX-SCROLL-HOJAS.MP3'], volume: 0.6 * volMod });
+    const audioStatic = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/sfx_static.mp3'], loop: true, volume: 0.3 * volMod });
+    const audioIgnite = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/SFX-ANTORCHA-ENCENDIDO.mp3'], volume: 1.0 * volMod });
+    const audioHeliApproach = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/SFX-HELICOPTERO-APPROACH.MP3'], volume: 1.0 * volMod });
     const audioHeliHover = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/SFX-HELICOPTERO-HOVER.MP3'], loop: true, volume: 0 });
     
-    // Música de fondo
     const musicDia = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/AUDIO-BGM-DIA.mp3'], loop: true, volume: 0 });
     const musicTarde = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/AUDIO-BGM-TARDE.MP3'], loop: true, volume: 0 });
     const musicNoche = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/AUDIO-BGM-NOCHE.MP3'], loop: true, volume: 0 });
     const musicInstrumental = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/AUDIO-INSTRUMENTAL.mp3'], loop: true, volume: 0 });
+
+    const audioTacticalHover = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/SFX-TACTICAL-HOVER.mp3'], volume: 0.5 * volMod });
+    const audioRescueImpact = new Howl({ src: ['https://cdn.jsdelivr.net/gh/VirtuaBarcelona/virtua-assets@main/survival-assets/SFX-RESCUE-IMPACT.mp3'], volume: 1.0 * volMod });
+
+    let isAudioUnlocked = false;
 
     // Mutear audio cuando el móvil se bloquea o se cambia de pestaña
     document.addEventListener("visibilitychange", () => {
@@ -64,11 +78,13 @@ document.addEventListener("DOMContentLoaded", () => {
             }, 100);
         }});
         musicDia.play();
-        musicDia.fade(0, 0.4, 2000);
+        musicDia.fade(0, 1.0 * volMod, 2000);
         musicTarde.play();
         musicNoche.play();
         musicInstrumental.play();
-        musicInstrumental.fade(0, 0.15, 2000);
+        
+        // Flag to allow onUpdate to modify volumes
+        isAudioUnlocked = true;
     });
 
     // ── 3. TIMELINE PRINCIPAL SCROLLTRIGGER ─────────────────────────────
@@ -79,7 +95,52 @@ document.addEventListener("DOMContentLoaded", () => {
             end: "+=12000",
             pin: "#srv-sticky-content",
             scrub: 1.5,
-            anticipatePin: 1
+            anticipatePin: 1,
+            onUpdate: (self) => {
+                if (!isAudioUnlocked) return;
+                
+                const progress = self.progress;
+
+                // Zona 1: Scroll 0% - 25% (fade out 15%-30%)
+                if (progress <= 0.15) {
+                    musicDia.volume(1 * volMod);
+                } else if (progress > 0.15 && progress <= 0.30) {
+                    musicDia.volume((1 - (progress - 0.15) / 0.15) * volMod);
+                } else {
+                    musicDia.volume(0);
+                }
+
+                // Zona 2: Scroll 25% - 55% (fade in 15-35%, max 35-50%, fade out 50-65%)
+                if (progress < 0.15) {
+                    musicTarde.volume(0);
+                } else if (progress >= 0.15 && progress < 0.35) {
+                    musicTarde.volume(((progress - 0.15) / 0.20) * volMod);
+                } else if (progress >= 0.35 && progress <= 0.50) {
+                    musicTarde.volume(1 * volMod);
+                } else if (progress > 0.50 && progress <= 0.65) {
+                    musicTarde.volume((1 - (progress - 0.50) / 0.15) * volMod);
+                } else {
+                    musicTarde.volume(0);
+                }
+
+                // Zona 3: Scroll 55% - 85% (fade in 45-70%, max 70-85%)
+                if (progress < 0.45) {
+                    musicNoche.volume(0);
+                } else if (progress >= 0.45 && progress < 0.70) {
+                    musicNoche.volume(((progress - 0.45) / 0.25) * volMod);
+                } else if (progress >= 0.70 && progress <= 0.85) {
+                    musicNoche.volume(1 * volMod);
+                } else {
+                    musicNoche.volume(0);
+                }
+
+                // Zona 4: Scroll 85% - 100% (enters abruptly at 85%)
+                if (progress > 0.85) {
+                    musicInstrumental.volume(1 * volMod);
+                } else {
+                    musicInstrumental.volume(0);
+                }
+            }
         }
     });
 
@@ -123,8 +184,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Transición de fondo: Día a Tarde
     tl.addLabel("tarde-start");
     tl.to("#srv-bg-tarde", { opacity: 1, duration: 4 }, "tarde-start");
-    tl.to(musicDia, { volume: 0, duration: 4 }, "tarde-start");
-    tl.to(musicTarde, { volume: 0.4, duration: 4 }, "tarde-start");
     
     // Aparece texto nexus (Glue narrative)
     tl.to("#srv-nexus-text", { opacity: 1, y: 0, duration: 1.5, ease: "power2.out" }, "tarde-start+=1");
@@ -159,12 +218,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- FASE 3: POLAROIDS ---
     tl.addLabel("noche-start");
     tl.to("#srv-bg-noche", { opacity: 1, duration: 4 }, "noche-start");
-    tl.to(musicTarde, { volume: 0, duration: 4 }, "noche-start");
-    tl.to(musicNoche, { volume: 0.4, duration: 4 }, "noche-start");
 
     const pols = ["#pol-1", "#pol-2", "#pol-3", "#pol-4", "#pol-5", "#pol-6"];
     const rotFinal = [-12, 8, -6, 14, -8, 10];
-    const isMobile = window.innerWidth <= 768;
     // Reduce spread on mobile to prevent lateral overflow
     const xPos = isMobile ? [-40, 50, -20, 30, -50, 40] : [-200, 200, -120, 120, -220, 220];
     const yPos = isMobile ? [-120, -150, -30, 30, 90, 120] : [-80, -120, 40, 80, -20, 150];
@@ -245,7 +301,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             // Adjust the clicked one
-            const scaleFlip = window.innerWidth <= 768 ? 0.95 : 1.4; // Slightly smaller on mobile to ensure it fits
+            const scaleFlip = isMobile ? 0.95 : 1.4; // Slightly smaller on mobile to ensure it fits
             if(!wasFlipped) { // if it just got flipped
                 gsap.to(el, { x: 0, y: 0, rotation: 0, scale: scaleFlip, zIndex: 40, duration: 0.5, ease: "back.out(1.2)" });
             } else { // if it got unflipped
@@ -257,6 +313,7 @@ document.addEventListener("DOMContentLoaded", () => {
         el.addEventListener('mouseenter', () => {
             if(!el.classList.contains('is-flipped')) {
                 gsap.to(el, { scale: 0.85, zIndex: 30, duration: 0.3 });
+                if (isAudioUnlocked) audioTacticalHover.play();
             }
         });
         el.addEventListener('mouseleave', () => {
@@ -320,7 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
             onStart: () => {
                 audioHeliApproach.play();
                 audioHeliHover.play();
-                audioHeliHover.fade(0, 1.0, 5000);
+                audioHeliHover.fade(0, 1.0 * volMod, 5000);
             }
         });
         
@@ -338,6 +395,14 @@ document.addEventListener("DOMContentLoaded", () => {
         finalTl.to("#srv-final-title", { opacity: 1, scale: 1, duration: 2, ease: "power2.out" });
         finalTl.to("#srv-final-tags", { opacity: 1, y: 0, duration: 1 }, "-=1");
         finalTl.to("#srv-rescue-cta", { opacity: 1, duration: 1.5, ease: "power2.out", pointerEvents: "auto" }, "-=0.5");
+    }
+
+    // --- 5. EVENTOS FINALES DE UI ---
+    const btnRescue = document.querySelector(".srv-btn-rescue");
+    if (btnRescue) {
+        btnRescue.addEventListener("click", () => {
+            if (isAudioUnlocked) audioRescueImpact.play();
+        });
     }
 
 });
