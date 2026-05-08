@@ -5,6 +5,10 @@
 document.addEventListener("DOMContentLoaded", () => {
     // Registrar Plugins GSAP
     gsap.registerPlugin(ScrollTrigger, TextPlugin, Draggable);
+    
+    // Optimizaciones Mobile UX (Evitar saltos con barra de navegación)
+    ScrollTrigger.config({ ignoreMobileResize: true });
+    ScrollTrigger.normalizeScroll(true);
 
     // ── 1. ESTADOS INICIALES ─────────────────────────────────────────────
     gsap.set(".srv-polaroid", { opacity: 0, y: -100, xPercent: -50, yPercent: -50, scale: 0.5, rotation: 0 });
@@ -44,6 +48,11 @@ document.addEventListener("DOMContentLoaded", () => {
         gsap.to("#srv-audio-unlock", { opacity: 0, duration: 0.5, onComplete: () => {
             document.getElementById("srv-audio-unlock").remove();
             document.body.style.overflow = ""; // Restaurar scroll
+            
+            // CRÍTICO PARA MOBILE: Forzar recálculo tras quitar el overflow:hidden
+            setTimeout(() => {
+                ScrollTrigger.refresh();
+            }, 100);
         }});
         musicDia.play();
         musicDia.fade(0, 0.4, 2000);
