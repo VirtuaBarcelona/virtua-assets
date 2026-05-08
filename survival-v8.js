@@ -207,34 +207,26 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }, { passive: true });
 
-    let frictionScore = 0;
     let isTorchLit = false;
 
     Draggable.create("#srv-torch", {
         type: "x,y",
         bounds: "#sala-survival",
         edgeResistance: 0.8,
-        onPress: function() {
-            gsap.to("#srv-torch-hint", { opacity: 0, duration: 0.3, onComplete: () => { document.getElementById("srv-torch-hint").remove(); } });
-        },
-        onDrag: function() {
-            if (isTorchLit) return;
+        onDragStart: function() {
+            gsap.to("#srv-torch-hint", { opacity: 0, duration: 0.3, onComplete: () => { 
+                const hint = document.getElementById("srv-torch-hint");
+                if(hint) hint.remove(); 
+            }});
             
-            if (this.hitTest("#srv-friction-zone", "15%")) {
-                frictionScore++;
-                gsap.set("#srv-friction-text", { opacity: 0.5 + (frictionScore / 40) });
+            if (isTorchLit) return;
+            isTorchLit = true;
+            document.getElementById("srv-torch").classList.add("is-lit");
+            gsap.to("#srv-torch-glow", { opacity: 1, duration: 0.3 });
+            audioIgnite.play();
+            if (navigator.vibrate) navigator.vibrate(200);
 
-                if (frictionScore > 5) {
-                    isTorchLit = true;
-                    document.getElementById("srv-torch").classList.add("is-lit");
-                    gsap.to("#srv-torch-glow", { opacity: 1, duration: 0.3 });
-                    audioIgnite.play();
-                    gsap.to("#srv-friction-text", { opacity: 0, duration: 0.3 });
-                    if (navigator.vibrate) navigator.vibrate(200);
-
-                    triggerFinalCinematic();
-                }
-            }
+            triggerFinalCinematic();
         }
     });
 
