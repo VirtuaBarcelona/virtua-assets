@@ -348,6 +348,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!prefersReducedMotion) {
           ambientAudio.playbackRate = 1 - progress * 0.06;
         }
+
+        // Mobile whisper proximity based on scroll
+        if (isMobile && emilySection && whisperAudio) {
+          const rect = emilySection.getBoundingClientRect();
+          const elementCenter = rect.top + rect.height / 2;
+          const viewportCenter = window.innerHeight / 2;
+          const distance = Math.abs(elementCenter - viewportCenter);
+          const maxDistance = window.innerHeight * 0.8; // Active range
+          const proximity = Math.max(0, 1 - distance / maxDistance);
+          const targetVol = proximity * 0.55;
+          whisperAudio.volume += (targetVol - whisperAudio.volume) * 0.08;
+          if (whisperAudio.volume > 0.02 && whisperAudio.paused) {
+            whisperAudio.play().catch(() => {});
+          }
+        }
       }, { passive: true });
     }
     initScrollAudio();
@@ -357,26 +372,62 @@ document.addEventListener('DOMContentLoaded', () => {
        ---------------------------------------------------------- */
     if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
       gsap.registerPlugin(ScrollTrigger);
-      gsap.utils.toArray('.paper-note').forEach(el => {
-        gsap.from(el, { scrollTrigger: { trigger: el, start: 'top 85%' }, y: 30, opacity: 0, duration: 0.8, ease: 'power3.out' });
+
+      // Pair and animate paper notes
+      const safeNotes = gsap.utils.toArray('.paper-note');
+      const hauntedNotes = gsap.utils.toArray('.paper-note-bloody');
+      safeNotes.forEach((el, i) => {
+        const partner = hauntedNotes[i];
+        gsap.from(el, {
+          scrollTrigger: { trigger: el, start: 'top 85%' },
+          y: 30, opacity: 0, duration: 0.8, ease: 'power3.out'
+        });
+        if (partner) {
+          if (!prefersReducedMotion) {
+            gsap.from(partner, {
+              scrollTrigger: { trigger: el, start: 'top 85%' },
+              y: 30, opacity: 0, scale: 1.04, duration: 0.8, ease: 'power3.out'
+            });
+          } else {
+            gsap.from(partner, {
+              scrollTrigger: { trigger: el, start: 'top 85%' },
+              y: 30, opacity: 0, duration: 0.8, ease: 'power3.out'
+            });
+          }
+        }
       });
+
       gsap.from('.stats-block', {
         scrollTrigger: { trigger: '.stats-block', start: 'top 85%' },
         opacity: 0, y: 20, duration: 0.8, ease: 'power2.out'
       });
-      gsap.from('.investigation-file', {
+
+      // Synchronize Emily Card animations
+      gsap.from('.investigation-file, .emily-haunted-wrap', {
         scrollTrigger: { trigger: '.investigation-file', start: 'top 85%' },
         opacity: 0, y: 25, duration: 0.9, ease: 'power3.out'
       });
-      gsap.utils.toArray('.safe-gallery .gallery-img-wrapper').forEach((el, i) => {
-        gsap.from(el, { scrollTrigger: { trigger: el, start: 'top 90%' }, opacity: 0, y: 20, duration: 0.6, delay: i * 0.1, ease: 'power2.out' });
+
+      // Synchronize Gallery Image animations
+      const safeGalleryItems = gsap.utils.toArray('.safe-gallery .gallery-img-wrapper');
+      const hauntedGalleryItems = gsap.utils.toArray('.haunted-gallery .gallery-img-wrapper');
+      safeGalleryItems.forEach((el, i) => {
+        const partner = hauntedGalleryItems[i];
+        gsap.from(el, {
+          scrollTrigger: { trigger: el, start: 'top 90%' },
+          opacity: 0, y: 20, duration: 0.6, delay: i * 0.1, ease: 'power2.out'
+        });
+        if (partner) {
+          gsap.from(partner, {
+            scrollTrigger: { trigger: el, start: 'top 90%' },
+            opacity: 0, y: 20, duration: 0.6, delay: i * 0.1, ease: 'power2.out'
+          });
+        }
       });
+
       if (!prefersReducedMotion) {
         gsap.utils.toArray('.layer-haunted .psychotic-text').forEach(el => {
           gsap.from(el, { scrollTrigger: { trigger: el, start: 'top 88%' }, opacity: 0, skewX: -15, duration: 0.35, ease: 'power4.out' });
-        });
-        gsap.utils.toArray('.paper-note-bloody').forEach(el => {
-          gsap.from(el, { scrollTrigger: { trigger: el, start: 'top 85%' }, opacity: 0, scale: 1.04, duration: 0.5, ease: 'power3.out' });
         });
       }
     }
@@ -431,7 +482,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ----------------------------------------------------------
-       J. GSAP MOBILE REFRESH
+       J. BFCACHE RESTORE — Reset transitions/black screens on history back
+       ---------------------------------------------------------- */
+    window.addEventListener('pageshow', (event) => {
+      // Restablecer estilos del body que puedan haberse modificado en la transición
+      document.body.style.opacity = '';
+      document.body.style.transition = '';
+      
+      // Quitar clases de glitch extremo
+      if (glitchEl) {
+        glitchEl.classList.remove('extreme-glitching', 'is-glitching');
+      }
+      if (emilyFlash) {
+        emilyFlash.style.opacity = '0';
+      }
+    });
+
+    /* ----------------------------------------------------------
+       K. GSAP MOBILE REFRESH
        ---------------------------------------------------------- */
     let resizeTimer;
     window.addEventListener('resize', () => {
