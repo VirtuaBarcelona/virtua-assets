@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ============================================================
      GLITCH TARGET — .virtua-elementor-override, not body.
-     body transforms create stacking contexts that trap fixed els.
      ============================================================ */
   const glitchEl = document.querySelector('.virtua-elementor-override') || document.body;
 
@@ -34,12 +33,62 @@ document.addEventListener('DOMContentLoaded', () => {
   whisperAudio.loop   = true;
   whisperAudio.volume = 0;
 
+  let audioCtx = null;
+  let whisperSource = null;
+  let whisperPanner = null;
+  let whisperGainNode = null;
+  let isAudioMuted = false;
+
+  function initWebAudio() {
+    if (audioCtx) return;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    try {
+      audioCtx = new AudioContextClass();
+      whisperSource = audioCtx.createMediaElementSource(whisperAudio);
+      if (audioCtx.createStereoPanner) {
+        whisperPanner = audioCtx.createStereoPanner();
+      } else {
+        whisperPanner = audioCtx.createPanner();
+        whisperPanner.panningModel = 'HRTF';
+      }
+      whisperGainNode = audioCtx.createGain();
+      
+      whisperSource.connect(whisperPanner);
+      whisperPanner.connect(whisperGainNode);
+      whisperGainNode.connect(audioCtx.destination);
+    } catch (e) {
+      console.warn('Web Audio API not supported or blocked:', e);
+    }
+  }
+
+  function updateWhisperAudio(targetVol, panVal) {
+    if (isAudioMuted) {
+      whisperAudio.volume = 0;
+      if (whisperGainNode) whisperGainNode.gain.value = 0;
+      return;
+    }
+    if (whisperGainNode) {
+      whisperGainNode.gain.value += (targetVol - whisperGainNode.gain.value) * 0.08;
+      whisperAudio.volume = 1;
+      if (whisperPanner) {
+        if (whisperPanner.pan) {
+          whisperPanner.pan.value = panVal;
+        } else if (whisperPanner.setPosition) {
+          whisperPanner.setPosition(panVal, 0, 1 - Math.abs(panVal));
+        }
+      }
+    } else {
+      whisperAudio.volume += (targetVol - whisperAudio.volume) * 0.08;
+    }
+  }
+
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       ambientAudio.pause();
       whisperAudio.pause();
     } else {
-      if (ambientAudio.currentTime > 0) ambientAudio.play().catch(() => {});
+      if (ambientAudio.currentTime > 0 && !isAudioMuted) ambientAudio.play().catch(() => {});
     }
   });
 
@@ -52,16 +101,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const ctx = canvas.getContext('2d');
     canvas.width  = 480;
     canvas.height = 270;
-    const id = ctx.createImageData(480, 270);
-    const d  = id.data;
-    function renderStatic() {
-      for (let i = 0; i < d.length; i += 4) {
+
+    // Pre-generate 6 frames of noise data in memory (ImageData)
+    const frames = [];
+    const numFrames = 6;
+    for (let f = 0; f < numFrames; f++) {
+      const imgData = ctx.createImageData(480, 270);
+      const data = imgData.data;
+      for (let i = 0; i < data.length; i += 4) {
         const on = Math.random() > 0.92;
         const v  = on ? Math.floor(Math.random() * 200 + 55) : 0;
-        d[i] = d[i + 1] = d[i + 2] = v;
-        d[i + 3] = on ? 220 : 0;
+        data[i] = data[i + 1] = data[i + 2] = v;
+        data[i + 3] = on ? 220 : 0;
       }
-      ctx.putImageData(id, 0, 0);
+      frames.push(imgData);
+    }
+
+    let currentFrameIndex = 0;
+    let frameInterval = 0;
+
+    function renderStatic() {
+      // Render every 2 frames to look more like television noise (30fps noise)
+      frameInterval++;
+      if (frameInterval >= 2) {
+        currentFrameIndex = (currentFrameIndex + 1) % numFrames;
+        frameInterval = 0;
+      }
+      ctx.putImageData(frames[currentFrameIndex], 0, 0);
       requestAnimationFrame(renderStatic);
     }
     renderStatic();
@@ -70,31 +136,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /* ============================================================
      SYNC LAYER HEIGHTS — ensures each section pair matches.
-     Runs on load (images resolved) and resize.
      ============================================================ */
   function syncLayerHeights() {
     const safe    = document.querySelectorAll('.layer-safe .hof-section');
     const haunted = document.querySelectorAll('.layer-haunted .hof-section');
-    document.querySelectorAll('.hof-section').forEach(s => { s.style.minHeight = ''; });
+    document.querySelectorAll('.hof-section').forEach(s => { 
+      s.style.minHeight = ''; 
+      s.style.height = ''; 
+    });
     safe.forEach((s, i) => {
       const h = haunted[i];
       if (!h) return;
       const height = Math.max(s.scrollHeight, h.scrollHeight);
-      s.style.minHeight = `${height}px`;
-      h.style.minHeight = `${height}px`;
+      s.style.height = `${height}px`;
+      h.style.height = `${height}px`;
     });
   }
   window.addEventListener('load', () => {
     syncLayerHeights();
     setTimeout(syncLayerHeights, 400);
   });
-  document.fonts.ready.then(syncLayerHeights);
+  if (document.fonts) {
+    document.fonts.ready.then(syncLayerHeights);
+  }
   window.addEventListener('resize', syncLayerHeights, { passive: true });
   window.addEventListener('orientationchange', () => setTimeout(syncLayerHeights, 300), { passive: true });
 
   /* ============================================================
      COMMUNICATIONS COUNTER — counts up from "last contact"
-     Starts immediately so it's already running when boot unlocks.
      ============================================================ */
   function initCommsCounter() {
     const el = document.getElementById('comms-time');
@@ -142,8 +211,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (bootScreen && unlockBtn) {
     unlockBtn.addEventListener('click', () => {
+      // Initialize Web Audio API
+      initWebAudio();
+      if (audioCtx) audioCtx.resume().catch(() => {});
+
       if (!prefersReducedMotion) glitchEl.classList.add('is-glitching');
-      new Audio('https://virtuabarcelona.com/wp-content/uploads/2026/04/Hit-Horror.wav').play().catch(() => {});
+      new Audio('https://assets.virtuabarcelona.com/HOUSE%20OF%20FEAR%20ASSETS/Hit-Horror.mp3').play().catch(() => {});
       ambientAudio.play().catch(() => {});
       setTimeout(() => {
         glitchEl.classList.remove('is-glitching');
@@ -199,29 +272,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { passive: true });
 
         function animFlashlight() {
-          // Lerp
           cur.x += (tgt.x - cur.x) * 0.08;
           cur.y += (tgt.y - cur.y) * 0.08;
 
-          // Breathing radius
           radius += breathe * 0.12;
           if (radius > 132) breathe = -1;
           if (radius < 110) breathe =  1;
 
-          // Apply flashlight
           hauntedLayer.style.setProperty('--mouse-x',           `${cur.x + window.scrollX - elemDocLeft}px`);
           hauntedLayer.style.setProperty('--mouse-y',           `${cur.y + window.scrollY - elemDocTop}px`);
           hauntedLayer.style.setProperty('--flashlight-radius', `${radius}px`);
 
-          // Emily proximity whisper
           if (emilySection) {
             const dx = (cur.x + window.scrollX) - emilyCenterX;
             const dy = (cur.y + window.scrollY) - emilyCenterY;
             const dist = Math.sqrt(dx * dx + dy * dy);
             const proximity = Math.max(0, 1 - dist / 400);
             const targetVol = proximity * 0.55;
-            whisperAudio.volume += (targetVol - whisperAudio.volume) * 0.04;
-            if (whisperAudio.volume > 0.02 && whisperAudio.paused) {
+
+            // Calculate Pan Value: -0.85 (left) to +0.85 (right)
+            const panVal = Math.max(-0.85, Math.min(0.85, ((cur.x / window.innerWidth) * 2) - 1));
+
+            updateWhisperAudio(targetVol, panVal);
+
+            const currentVol = whisperGainNode ? whisperGainNode.gain.value : whisperAudio.volume;
+            if (currentVol > 0.02 && whisperAudio.paused && !isAudioMuted) {
               whisperAudio.play().catch(() => {});
             }
           }
@@ -231,10 +306,13 @@ document.addEventListener('DOMContentLoaded', () => {
         animFlashlight();
 
       } else {
+        let hasGyro = false;
+
         function activateGyro() {
           if (mobileHint) mobileHint.classList.add('hidden');
           window.addEventListener('deviceorientation', e => {
             if (e.gamma === null) return;
+            hasGyro = true;
             const x = ((e.gamma + 45) / 90) * window.innerWidth;
             const yInViewport = ((e.beta - 45) / 60) * window.innerHeight + window.innerHeight / 2;
             const y = yInViewport + window.scrollY;
@@ -242,15 +320,39 @@ document.addEventListener('DOMContentLoaded', () => {
             hauntedLayer.style.setProperty('--mouse-y', `${Math.max(0, Math.min(hauntedLayer.scrollHeight, y))}px`);
           }, { passive: true });
         }
+
+        // Swipe Fallback
+        function updateTouchCoords(e) {
+          if (hasGyro) return;
+          const touch = e.touches[0];
+          const x = touch.clientX;
+          const y = touch.clientY + window.scrollY;
+          hauntedLayer.style.setProperty('--mouse-x', `${Math.max(0, Math.min(window.innerWidth, x))}px`);
+          hauntedLayer.style.setProperty('--mouse-y', `${Math.max(0, Math.min(hauntedLayer.scrollHeight, y))}px`);
+        }
+        window.addEventListener('touchstart', updateTouchCoords, { passive: true });
+        window.addEventListener('touchmove', updateTouchCoords, { passive: true });
+
         if (typeof DeviceOrientationEvent !== 'undefined' &&
             typeof DeviceOrientationEvent.requestPermission === 'function') {
           if (mobileHint) mobileHint.style.display = 'block';
           if (mobileHint) mobileHint.addEventListener('click', () => {
             DeviceOrientationEvent.requestPermission()
-              .then(s => { if (s === 'granted') activateGyro(); }).catch(() => {});
+              .then(s => { 
+                if (s === 'granted') {
+                  activateGyro();
+                } else {
+                  if (mobileHint) mobileHint.classList.add('hidden');
+                }
+              }).catch(() => {
+                if (mobileHint) mobileHint.classList.add('hidden');
+              });
           });
         } else if (window.DeviceOrientationEvent) {
           activateGyro();
+          setTimeout(() => {
+            if (hasGyro && mobileHint) mobileHint.classList.add('hidden');
+          }, 300);
         }
       }
     }
@@ -290,8 +392,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.cta-trigger').forEach(btn => {
       btn.addEventListener('click', e => {
         e.preventDefault();
-        const url = btn.getAttribute('href');
-        new Audio('https://virtuabarcelona.com/wp-content/uploads/2026/04/TensionRiser04.mp3').play().catch(() => {});
+        const url = btn.getAttribute('href') || '/reservas_virtua/';
+        new Audio('https://assets.virtuabarcelona.com/HOUSE%20OF%20FEAR%20ASSETS/tension-riser.mp3').play().catch(() => {});
         if (!prefersReducedMotion && emilyFlash) {
           glitchEl.classList.add('extreme-glitching');
           [0, 130, 290, 520, 820, 1200].forEach((t, i) => {
@@ -310,8 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /* ----------------------------------------------------------
-       E. HERO LIGHT FLICKER — occasional dark flash on bg image
-       Uses an overlay div, not filter animation, for reliability
+       E. HERO LIGHT FLICKER
        ---------------------------------------------------------- */
     function initHeroFlicker() {
       const overlay = document.querySelector('.hero-flicker-overlay');
@@ -320,7 +421,6 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.style.opacity = '1';
         setTimeout(() => {
           overlay.style.opacity = '0';
-          // Occasional double-flicker
           if (Math.random() > 0.55) {
             setTimeout(() => {
               overlay.style.opacity = '1';
@@ -342,9 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const maxScroll = document.body.scrollHeight - window.innerHeight;
         if (maxScroll <= 0) return;
         const progress = Math.min(1, window.scrollY / maxScroll);
-        // Volume: 0.25 (top) → 0.65 (bottom)
-        ambientAudio.volume = 0.25 + progress * 0.4;
-        // Pitch: very slight slowdown adds dread (0.98 → 0.94)
+        ambientAudio.volume = isAudioMuted ? 0 : (0.25 + progress * 0.4);
         if (!prefersReducedMotion) {
           ambientAudio.playbackRate = 1 - progress * 0.06;
         }
@@ -358,8 +456,11 @@ document.addEventListener('DOMContentLoaded', () => {
           const maxDistance = window.innerHeight * 0.8; // Active range
           const proximity = Math.max(0, 1 - distance / maxDistance);
           const targetVol = proximity * 0.55;
-          whisperAudio.volume += (targetVol - whisperAudio.volume) * 0.08;
-          if (whisperAudio.volume > 0.02 && whisperAudio.paused) {
+          
+          updateWhisperAudio(targetVol, 0);
+
+          const currentVol = whisperGainNode ? whisperGainNode.gain.value : whisperAudio.volume;
+          if (currentVol > 0.02 && whisperAudio.paused && !isAudioMuted) {
             whisperAudio.play().catch(() => {});
           }
         }
@@ -463,7 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (stickyBtn && heroSection) {
       window.addEventListener('scroll', () => {
         const heroRect = heroSection.getBoundingClientRect();
-        const footerElements = document.querySelectorAll('footer, .elementor-location-footer, .site-footer, .site-below-footer-wrap, .cta-section');
+        const footerElements = document.querySelectorAll('footer, .vh-footer-fixed-behind, .cta-section');
         
         let isFooterVisible = false;
         footerElements.forEach(f => {
@@ -497,21 +598,51 @@ document.addEventListener('DOMContentLoaded', () => {
         emilyFlash.style.opacity = '0';
       }
     });
+    /* ----------------------------------------------------------
+       K. AUDIO WIDGET CONTROLLER (MUTE / UNMUTE)
+       ---------------------------------------------------------- */
+    const audioCtrlBtn = document.getElementById('hof-audio-control');
+    if (audioCtrlBtn) {
+      audioCtrlBtn.classList.add('is-playing');
+
+      audioCtrlBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        isAudioMuted = !isAudioMuted;
+        if (isAudioMuted) {
+          audioCtrlBtn.classList.remove('is-playing');
+          audioCtrlBtn.classList.add('is-muted');
+          ambientAudio.volume = 0;
+          whisperAudio.volume = 0;
+          if (whisperGainNode) whisperGainNode.gain.value = 0;
+          ambientAudio.pause();
+          whisperAudio.pause();
+        } else {
+          audioCtrlBtn.classList.remove('is-muted');
+          audioCtrlBtn.classList.add('is-playing');
+          if (audioCtx) audioCtx.resume().catch(() => {});
+          
+          // Trigger scroll event to recalculate volumes based on current scroll position
+          window.dispatchEvent(new Event('scroll'));
+          ambientAudio.play().catch(() => {});
+        }
+      });
+    }
 
     /* ----------------------------------------------------------
-       K. GSAP MOBILE REFRESH
+       L. CENSORSHIP HOVER REVEAL (SCRAMBLE)
        ---------------------------------------------------------- */
-    let resizeTimer;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        if (typeof ScrollTrigger !== 'undefined') ScrollTrigger.refresh(true);
-      }, 250);
-    });
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        if (typeof ScrollTrigger !== 'undefined') ScrollTrigger.refresh(true);
-      }, 500);
+    document.querySelectorAll('.blackout').forEach(el => {
+      const originalText = el.textContent.trim();
+      let revealed = false;
+      
+      el.addEventListener('mouseenter', () => {
+        if (revealed) return;
+        revealed = true;
+        el.classList.remove('blackout');
+        el.style.color = '#ff0000';
+        el.style.backgroundColor = 'transparent';
+        scrambleText(el, originalText, 600);
+      });
     });
 
   } // end initTerrorMechanics
